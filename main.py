@@ -43,4 +43,4 @@ async def on_message(message):
 def remove_mentions(message):
     return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
 
-client.run('NDMzNTg5MTE2MDA2MDM5NTYz.Da-C4g.6ByagOSok2vnhlrNRDgB7gO4ang')
+client.run('token')
