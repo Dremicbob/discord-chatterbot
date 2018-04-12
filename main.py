@@ -37,8 +37,7 @@ async def on_message(message):
         await client.send_message(message.channel, content=bot_reply)
         print("reply: " + bot_reply)
     else:
-        msg = await client.wait_for_message(channel=message.channel)
-        bot.learn_response(remove_mentions(msg),remove_mentions(msg))
+        bot.get_response(clean_message)
 
 def remove_mentions(message):
     return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
