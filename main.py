@@ -1,6 +1,7 @@
 import discord
 import asyncio
 import re
+import sys
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
 from chatterbot.conversation import Statement, Response
@@ -13,11 +14,12 @@ bot = ChatBot(
     database='./db.sqlite3'
 )
 
-bot.set_trainer(ChatterBotCorpusTrainer)
+if("-train" in sys.argv):
+    bot.set_trainer(ChatterBotCorpusTrainer)
 
-bot.train(
-    "chatterbot.corpus.english",
-)
+    bot.train(
+        "chatterbot.corpus.english",
+    )
 
 bot.set_trainer(ListTrainer)
 
