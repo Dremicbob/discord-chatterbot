@@ -1,9 +1,9 @@
 import discord
 import asyncio
-import random
 import re
 from chatterbot import ChatBot
-from chatterbot.trainers import ChatterBotCorpusTrainer
+from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
+from chatterbot.conversation import Statement, Response
 
 client = discord.Client()
 
@@ -15,9 +15,11 @@ bot = ChatBot(
 
 bot.set_trainer(ChatterBotCorpusTrainer)
 
-'''bot.train(
+bot.train(
     "chatterbot.corpus.english",
-)'''
+)
+
+bot.set_trainer(ListTrainer)
 
 @client.event
 async def on_ready():
@@ -30,14 +32,29 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
+    
     clean_message = remove_mentions(message)
-    if client.user in message.mentions or random.randint(0,100) < 10 or message.channel.is_private:
+    if client.user in message.mentions or message.channel.is_private:
         print("message: " + clean_message)
-        bot_reply = str(bot.get_response(clean_message))
+        bot_reply = str( bot.generate_response(Statement(clean_message), None)[1] )
         await client.send_message(message.channel, content=bot_reply)
         print("reply: " + bot_reply)
     else:
-        bot.get_response(clean_message)
+        if clean_message.endswith("?") or len(message.mentions) > 0:
+            reply = await client.wait_for_message()
+            print(reply.author, [client.user, message.author])
+            if reply.author in [client.user, message.author]:
+                print("forgetting conversation")
+                return
+
+            clean_reply = remove_mentions(reply)
+            print("learning message: {0}".format(clean_message))
+            print("learning reply: {0}".format(clean_reply))
+            bot.train([
+                clean_message,
+                clean_reply,
+            ])
+            # bot.learn_response(Statement(clean_reply), Statement(clean_message))
 
 def remove_mentions(message):
     return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
