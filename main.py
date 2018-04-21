@@ -1,6 +1,7 @@
 import asyncio
 import re
 import sys
+import os
 
 # logging
 import logging
@@ -88,10 +89,13 @@ class MyClient(discord.Client):
 if("-train" in sys.argv):
     corpus_train()
 
-if '-token' not in sys.argv:
-    raise Exception("Please supply a token using '-token YOUR-TOKEN-HERE'")
+if '-token' not in sys.argv and 'token' not in os.environ:
+    raise Exception("Please supply a token using '-token YOUR-TOKEN-HERE' or setting the environment variable token")
 else:
-    token = sys.argv[sys.argv.index('-token') + 1]
+    if '-token' in sys.argv: 
+        token = sys.argv[sys.argv.index('-token') + 1]
+    else:
+        token = os.environ['token']
 
     client = MyClient()
     client.run(token)
