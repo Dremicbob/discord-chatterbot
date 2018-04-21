@@ -92,18 +92,14 @@ if("-train" in sys.argv):
 if '-token' not in sys.argv and 'token' not in os.environ:
     raise Exception("Please supply a token using '-token YOUR-TOKEN-HERE' or setting the environment variable token")
 else:
+    token = ""
     if '-token' in sys.argv: 
         token = sys.argv[sys.argv.index('-token') + 1]
     else:
         token = os.environ['token']
 
-    logging.info("token: " + token)
-
-    # try:
-    #     client = MyClient()
-    #     client.run(token)
-    # finally:
-    #     logging.info("token: " + token)
+    client = MyClient()
+    client.run(token)
     
 
     
