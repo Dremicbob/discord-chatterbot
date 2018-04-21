@@ -16,13 +16,13 @@ from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
 from chatterbot.conversation import Statement
 
-def remove_mentions(message):
-    return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
+def remove_mentions(message : str):
+    return re.sub(r'@[a-zA-Z\d\S:]+','',message).strip()
 
-def get_command(message, prefix="!"):
-    if not message.content.startswith(prefix):
+def get_command(message : str, prefix="!"):
+    if not message.startswith(prefix):
         raise Exception("No command")
-    return message.content.split(" ")[0].replace("!", " ").strip()
+    return message.split(" ")[0].replace("!", " ").strip()
     
 
 class ChatClient(discord.Client):
@@ -46,7 +46,15 @@ class ChatClient(discord.Client):
 
     @asyncio.coroutine
     def train(self, message):
-        yield from self.send_message(message.channel, content="train")
+        if not "(:)" in message.content:
+            yield from self.send_message(message.channel, content=":thinking: You have no reply for me to learn. Use (:) to seperate message.")
+            return
+        
+        learn_message, learn_reply = message.clean_content.replace("!" + get_command(message.content), "").split("(:)")
+
+        self.learn(learn_message, learn_reply)
+
+        yield from self.send_message(message.channel, content=f"learning: \n message = {learn_message} \n reply = {learn_reply}")
     
     def corpus_train():
         self.bot.set_trainer(ChatterBotCorpusTrainer)
@@ -80,13 +88,13 @@ class ChatClient(discord.Client):
     @asyncio.coroutine  
     def send_reply(self, message):
         logging.info("--- Sending Reply ---")
-        message_without_mentions = remove_mentions(message) 
+        message_without_mentions = remove_mentions(message.clean_content) 
         
         reply = str( self.bot.generate_response( Statement(message_without_mentions) , None)[1] )
         yield from self.send_message(message.channel, content=reply)
 
         logging.info("message: " + message_without_mentions)
-        logging.info("reply: " + reply)     
+        logging.info("reply: " + reply)
 
     @asyncio.coroutine  
     def on_message(self,message):
@@ -94,7 +102,7 @@ class ChatClient(discord.Client):
             return
 
         if message.content.startswith("!"):
-            command = get_command(message)
+            command = get_command(message.clean_content)
             try:
                 yield from self.commands[command](message)
             except KeyError:
@@ -104,14 +112,14 @@ class ChatClient(discord.Client):
         
         if self.user in message.mentions or message.channel.is_private:
             yield from self.send_reply(message)
-        elif clean_message:
+        else:
             if clean_message.endswith("?") or len(message.mentions) > 0:
                 reply = yield from self.wait_for_message()
                 if reply.author in [self.user, message.author]:
                     logging.info("forgetting conversation")
                     return
                 
-                self.learn(message, reply)
+                self.learn(message.clean_content, reply.clean_content)
 
 def main():
     if("-train" in sys.argv):
