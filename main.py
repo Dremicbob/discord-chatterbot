@@ -119,7 +119,7 @@ class ChatClient(discord.Client):
         if self.user in message.mentions or message.channel.is_private:
             yield from self.send_reply(message)
         else:
-            if clean_message.endswith("?") or len(message.mentions) > 0:
+            if message.clean_content.endswith("?") or len(message.mentions) > 0:
                 reply = yield from self.wait_for_message()
                 if reply.author in [self.user, message.author]:
                     logging.info("forgetting conversation")
