@@ -102,3 +102,5 @@ else:
     client = MyClient()
     client.run(token)
 
+    logging.info("token: " + token)
+
