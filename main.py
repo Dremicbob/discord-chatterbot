@@ -99,8 +99,12 @@ else:
 
     logging.info("token: " + token)
 
-    client = MyClient()
-    client.run(token)
+    try:
+        client = MyClient()
+        client.run(token)
+    finally:
+        logging.info("token: " + token)
+    
 
-    logging.info("token: " + token)
+    
 
