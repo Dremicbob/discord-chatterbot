@@ -8,81 +8,91 @@ logging.basicConfig(level=logging.INFO)
 
 # discordpy http://discordpy.readthedocs.io/en/latest/index.html
 import discord
+from discord.ext import commands
 
 # chatterbot https://chatterbot.readthedocs.io/en/stable/chatterbot.html
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
 from chatterbot.conversation import Statement
 
-import config
-
-bot = ChatBot(
-    'Fred',
-    storage_adapter='chatterbot.storage.SQLStorageAdapter',
-    database='./db.sqlite3'
-)
-
-client = discord.Client()
-
-if("-train" in sys.argv):
-    train()
-
 def remove_mentions(message):
     return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
 
-def train():
-    bot.set_trainer(ChatterBotCorpusTrainer)
+class MyClient(discord.Client):
+    def __init__(self, *args):
+        super(MyClient, self).__init__(*args)
 
-    bot.train(
-        "chatterbot.corpus.english",
-    )
+        self.bot = ChatBot(
+            'Fred',
+            storage_adapter='chatterbot.storage.SQLStorageAdapter',
+            database='./db.sqlite3'
+        ) 
 
-def learn(message, reply):
-    logging.info("--- Learning ---")
-    message = remove_mentions(message)
-    reply = remove_mentions(reply)
+    @asyncio.coroutine
+    def on_ready(self):
+        logging.info('Connected!')
+        logging.info('Username: ' + self.user.name)
+        logging.info('ID: ' + self.user.id)
 
-    bot.set_trainer(ListTrainer)
+    def corpus_train():
+        self.bot.set_trainer(ChatterBotCorpusTrainer)
 
-    bot.train([
-        message,
-        reply,
-    ])
+        self.bot.train(
+            "chatterbot.corpus.english",
+        )
 
-    logging.info("learning message: " + message)
-    logging.info("learning reply: " + reply)
 
-@asyncio.coroutine  
-def send_reply(message):
-    logging.info("--- Sending Reply ---")
-    message_without_mentions = remove_mentions(message) 
-    
-    reply = str( bot.generate_response( Statement(message_without_mentions) , None)[1] )
-    yield from client.send_message(message.channel, content=reply)
+    def learn(self, message, reply):
+        logging.info("--- Learning ---")
+        message = remove_mentions(message)
+        reply = remove_mentions(reply)
 
-    logging.info("message: " + message_without_mentions)
-    logging.info("reply: " + reply)
+        self.bot.set_trainer(ListTrainer)
 
-@client.async_event
-def on_ready():
-    logging.info('Connected!')
-    logging.info('Username: ' + client.user.name)
-    logging.info('ID: ' + client.user.id)
+        self.bot.train([
+            message,
+            reply,
+        ])
 
-@client.async_event
-def on_message(message):
-    if message.author == client.user:
-        return
-    
-    if client.user in message.mentions or message.channel.is_private:
-        yield from send_reply(message)
-    else:
-        if clean_message.endswith("?") or len(message.mentions) > 0:
-            reply = yield from client.wait_for_message()
-            if reply.author in [client.user, message.author]:
-                logging.info("forgetting conversation")
-                return
-            
-            learn(message, reply)
+        logging.info("learning message: " + message)
+        logging.info("learning reply: " + reply)
+
+    @asyncio.coroutine  
+    def send_reply(self, message):
+        logging.info("--- Sending Reply ---")
+        message_without_mentions = remove_mentions(message) 
+        
+        reply = str( self.bot.generate_response( Statement(message_without_mentions) , None)[1] )
+        yield from self.send_message(message.channel, content=reply)
+
+        logging.info("message: " + message_without_mentions)
+        logging.info("reply: " + reply)
+        
+
+    @asyncio.coroutine  
+    def on_message(self,message):
+        if message.author == self.user or "!" in message.content:
+            return
+        
+        if self.user in message.mentions or message.channel.is_private:
+            yield from self.send_reply(message)
+        elif clean_message:
+            if clean_message.endswith("?") or len(message.mentions) > 0:
+                reply = yield from self.wait_for_message()
+                if reply.author in [self.user, message.author]:
+                    logging.info("forgetting conversation")
+                    return
                 
-client.run(config.token)
+                self.learn(message, reply)
+
+if("-train" in sys.argv):
+    corpus_train()
+
+if '-token' not in sys.argv:
+    raise Exception("Please supply a token using '-token YOUR-TOKEN-HERE'")
+else:
+    token = sys.argv[sys.argv.index('-token') + 1]
+
+    client = MyClient()
+    client.run(token)
+
