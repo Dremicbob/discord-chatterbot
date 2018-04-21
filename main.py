@@ -1,12 +1,20 @@
-import discord
 import asyncio
 import re
 import sys
+
+# logging
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# discordpy http://discordpy.readthedocs.io/en/latest/index.html
+import discord
+
+# chatterbot https://chatterbot.readthedocs.io/en/stable/chatterbot.html
 from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer, ListTrainer
-from chatterbot.conversation import Statement, Response
+from chatterbot.conversation import Statement
 
-client = discord.Client()
+import config
 
 bot = ChatBot(
     'Fred',
@@ -14,51 +22,67 @@ bot = ChatBot(
     database='./db.sqlite3'
 )
 
+client = discord.Client()
+
 if("-train" in sys.argv):
+    train()
+
+def remove_mentions(message):
+    return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
+
+def train():
     bot.set_trainer(ChatterBotCorpusTrainer)
 
     bot.train(
         "chatterbot.corpus.english",
     )
 
-bot.set_trainer(ListTrainer)
+def learn(message, reply):
+    logging.info("--- Learning ---")
+    message = remove_mentions(message)
+    reply = remove_mentions(reply)
 
-@client.event
-async def on_ready():
-    print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
-    print('------')
+    bot.set_trainer(ListTrainer)
 
-@client.event
-async def on_message(message):
+    bot.train([
+        message,
+        reply,
+    ])
+
+    logging.info("learning message: " + message)
+    logging.info("learning reply: " + reply)
+
+@asyncio.coroutine  
+def send_reply(message):
+    logging.info("--- Sending Reply ---")
+    message_without_mentions = remove_mentions(message) 
+    
+    reply = str( bot.generate_response( Statement(message_without_mentions) , None)[1] )
+    yield from client.send_message(message.channel, content=reply)
+
+    logging.info("message: " + message_without_mentions)
+    logging.info("reply: " + reply)
+
+@client.async_event
+def on_ready():
+    logging.info('Connected!')
+    logging.info('Username: ' + client.user.name)
+    logging.info('ID: ' + client.user.id)
+
+@client.async_event
+def on_message(message):
     if message.author == client.user:
         return
     
-    clean_message = remove_mentions(message)
     if client.user in message.mentions or message.channel.is_private:
-        print("message: " + clean_message)
-        bot_reply = str( bot.generate_response(Statement(clean_message), None)[1] )
-        await client.send_message(message.channel, content=bot_reply)
-        print("reply: " + bot_reply)
+        yield from send_reply(message)
     else:
         if clean_message.endswith("?") or len(message.mentions) > 0:
-            reply = await client.wait_for_message()
-            print(reply.author, [client.user, message.author])
+            reply = yield from client.wait_for_message()
             if reply.author in [client.user, message.author]:
-                print("forgetting conversation")
+                logging.info("forgetting conversation")
                 return
-
-            clean_reply = remove_mentions(reply)
-            print("learning message: {0}".format(clean_message))
-            print("learning reply: {0}".format(clean_reply))
-            bot.train([
-                clean_message,
-                clean_reply,
-            ])
-            # bot.learn_response(Statement(clean_reply), Statement(clean_message))
-
-def remove_mentions(message):
-    return re.sub(r'@[a-zA-Z\d\S:]+','',message.clean_content).strip()
-
-client.run('NDMzNTg5MTE2MDA2MDM5NTYz.Da-C4g.6ByagOSok2vnhlrNRDgB7gO4ang')
+            
+            learn(message, reply)
+                
+client.run(config.token)
