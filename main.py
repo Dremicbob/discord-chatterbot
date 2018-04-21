@@ -47,14 +47,20 @@ class ChatClient(discord.Client):
     @asyncio.coroutine
     def train(self, message):
         if not "(:)" in message.content:
-            yield from self.send_message(message.channel, content=":thinking: You have no reply for me to learn. Use (:) to seperate message.")
+            yield from self.send_message(message.channel, content=":confused: You have no reply for me to learn. Use (:) to seperate message.")
             return
         
-        learn_message, learn_reply = message.clean_content.replace("!" + get_command(message.content), "").split("(:)")
+        train_times = 1
+        if "(super_train)" in message.clean_content:
+            train_times = 100
+            yield from self.send_message(message.channel, content=f":clock: super_train underway please be patient")
+        
+        learn_message, learn_reply = message.clean_content.replace("!" + get_command(message.content), "").replace("(super_train)", "").split("(:)")
 
-        self.learn(learn_message, learn_reply)
+        self.learn(learn_message, learn_reply, train_times=train_times)
 
-        yield from self.send_message(message.channel, content=f"learning: \n message = {learn_message} \n reply = {learn_reply}")
+        yield from self.send_message(message.channel, content=f"learnt: \n message = {learn_message} \n reply = {learn_reply}")
+      
     
     def corpus_train():
         self.bot.set_trainer(ChatterBotCorpusTrainer)
@@ -63,7 +69,7 @@ class ChatClient(discord.Client):
             "chatterbot.corpus.english",
         )
 
-    def learn(self, message, reply):
+    def learn(self, message, reply, train_times=1):
         logging.info("--- Learning ---")
         message = remove_mentions(message)
         reply = remove_mentions(reply)
@@ -73,7 +79,7 @@ class ChatClient(discord.Client):
         self.bot.train([
             message,
             reply,
-        ])
+        ] * train_times)
 
         logging.info("learning message: " + message)
         logging.info("learning reply: " + reply)
@@ -106,7 +112,7 @@ class ChatClient(discord.Client):
             try:
                 yield from self.commands[command](message)
             except KeyError:
-                yield from self.send_message(message.channel, content=(command + " is not a registered command :P"))
+                yield from self.send_message(message.channel, content=(command + ":P is not a registered command"))
 
             return
         
