@@ -1,1 +1,1 @@
-worker:  python main.py -token YOUR-TOKEN-HERE
+worker:  python main.py
