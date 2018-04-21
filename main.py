@@ -97,6 +97,8 @@ else:
     else:
         token = os.environ['token']
 
+    logging.info("token: " + token)
+
     client = MyClient()
     client.run(token)
 
