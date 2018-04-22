@@ -46,6 +46,14 @@ class ChatClient(discord.Client):
 
     @asyncio.coroutine
     def train(self, message):
+        if message.channel.is_private:
+            yield from self.send_message(message.channel, content=":stuck_out_tongue: Sorry you have to teach me on a server where I can check your role.")
+            return
+
+        if not "Bot Trainer" in [role.name for role in message.author.roles]:
+            yield from self.send_message(message.channel, content=":unamused: Only user with the 'Bot Trainer' role can train me.")
+            return
+
         if not "(:)" in message.content:
             yield from self.send_message(message.channel, content=":confused: You have no reply for me to learn. Use (:) to seperate message.")
             return
@@ -112,7 +120,7 @@ class ChatClient(discord.Client):
             try:
                 yield from self.commands[command](message)
             except KeyError:
-                yield from self.send_message(message.channel, content=(command + ":P is not a registered command"))
+                yield from self.send_message(message.channel, content=(command + ":stuck_out_tongue: is not a registered command"))
 
             return
         
